@@ -34,5 +34,9 @@ object SparkSQL {
     spark.sql("select * from device where device_name='110kV百河铝业OptiX 155 622H(Metro1000)-64-1-OI2D-1(SDH-1)-VC4:1'").show(10)
     //spark.sql("select * from index where index_id < 20").show()
     spark.sql("select * from index, device where device.device_id = index.index_id").show()
+    val a = spark.sql("select cast(index_id /3 as int), count(*) from index group by cast(index_id /3 as int)")
+      .rdd.map(item => (item(0), item(1))).collectAsMap().toMap
+    println(a)
+    spark.sql("select stddev(device_id) from device").collect().foreach(println(_))
   }
 }
