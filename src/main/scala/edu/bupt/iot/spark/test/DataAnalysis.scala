@@ -91,17 +91,16 @@ object DataAnalysis {
     val stddev = spark.sql("select time_stamp, stddev from tmp")
       .rdd.map(item => (item(0).toString, item(1)))
       .collectAsMap()
+    val usualCount =  spark.sql("select data.time_stamp, count(*) as usualCount " +
+      "from data, tmp " +
+      "where " +
+      "data.time_stamp = tmp.time_stamp and " +
+      "abs(value - mean) <= 3 * stddev " +
+      "group by data.time_stamp")
+      .rdd.map(item => (item(0).toString, item(1)))
+      .collectAsMap()
 
     val info = {
-      val usualCount =  spark.sql("select data.time_stamp, count(*) as usualCount " +
-        "from data, tmp " +
-        "where " +
-        "data.time_stamp = tmp.time_stamp and " +
-        "abs(value - mean) <= 3 * stddev " +
-        "group by data.time_stamp")
-        .rdd.map(item => (item(0).toString, item(1)))
-        .collectAsMap()
-        ////////////////////
       val tmp = {
         val all  = mutable.Map[String, Any]()
         all.put("status", "success")
