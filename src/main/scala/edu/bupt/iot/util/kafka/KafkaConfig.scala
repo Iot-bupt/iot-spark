@@ -8,7 +8,7 @@ import scala.util.Random
 
 object KafkaConfig {
   //10.112.233.200
-  final val BOOTSTRAP_SERVERS = "39.104.186.210:9092"
+  final val BOOTSTRAP_SERVERS = "172.30.26.6:9092"
 
   def getProducerConf(): Properties ={
     val p = new Properties()
