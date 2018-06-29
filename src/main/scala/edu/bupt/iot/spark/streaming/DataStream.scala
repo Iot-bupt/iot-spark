@@ -66,6 +66,7 @@ object DataStream {
       })
     )
     val win = kafkaValueStream.window(Seconds(3600), Seconds(3600))
+      .transform(rdd => rdd.distinct())
     //win.print()
     win.saveAsTextFiles("hdfs://master:9000/data/device-data")
 
