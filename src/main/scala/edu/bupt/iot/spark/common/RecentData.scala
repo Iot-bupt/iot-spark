@@ -39,13 +39,14 @@ object RecentData {
     val spark = SparkSession
       .builder()
       .appName("RecentData")
-      .master("local")
+      .master("spark://master:7077")
       .getOrCreate()
     import spark.implicits._
     val data = spark.sparkContext.textFile(inputFiles)
       .map(_.split(","))
       .map{case Array(tenant_id, key, device_id, value, time_stamp) =>
         (tenant_id.toInt, key, device_id, value.toDouble, time_stamp.toLong)}
+      .filter(item => item._5 >= startTime &&  item._5 <= endTime)
       //.filter(item => item._4 >= startTime && item._4 < endTime)
       .toDF("tenant_id", "key", "device_id", "value", "time_stamp")
     data.createOrReplaceTempView("data")

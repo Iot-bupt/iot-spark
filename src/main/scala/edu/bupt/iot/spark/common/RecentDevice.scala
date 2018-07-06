@@ -41,13 +41,14 @@ object RecentDevice {
     val spark = SparkSession
       .builder()
       .appName("RecentDevice")
-      .master("local")
+      .master("spark://master:7077")
       .getOrCreate()
     import spark.implicits._
     val data = spark.sparkContext.textFile(inputFiles)
       .map(_.split(","))
       .map{case Array(tenant_id, key, device_id, value, time_stamp) =>
         (tenant_id.toInt, key, device_id, value.toDouble, time_stamp.toLong)}
+        .filter(item => item._5 >= startTime &&  item._5 <= endTime)
       .toDF("tenant_id", "key", "device_id", "value", "time_stamp").cache()
     data.createOrReplaceTempView("data")
     val producer = new KafkaProducer[String, String](KafkaConfig.getProducerConf())
