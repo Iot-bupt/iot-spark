@@ -8,7 +8,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 
 import scala.util.control.Breaks
 
-object RecentAnalysis {
+object RecentData {
   def main(args: Array[String]): Unit = {
     var endTime = new Date().getTime
     if(args.length > 0) endTime = args(0).toLong
@@ -33,12 +33,12 @@ object RecentAnalysis {
       pre
     }
     println(dataFilePre)
-    //val inputFiles = s"hdfs://master:9000/data/device-data-${dataFilePre}*"
-    val inputFiles = s"hdfs://master:9000/data/1527782400000"
+    val inputFiles = s"hdfs://master:9000/data/device-data-${dataFilePre}*"
+    //val inputFiles = s"hdfs://master:9000/data/1527782400000"
     println(inputFiles)
     val spark = SparkSession
       .builder()
-      .appName("RecentAnalysis")
+      .appName("RecentData")
       .master("local")
       .getOrCreate()
     import spark.implicits._
@@ -51,21 +51,22 @@ object RecentAnalysis {
     data.createOrReplaceTempView("data")
     //println(data.show(10))
     val producer = new KafkaProducer[String, String](KafkaConfig.getProducerConf())
-    spark.sql("select tenant_id, device_id, key as value_type," +
+    spark.sql("select tenant_id, key as device_type," +
       " max(value) as max_value, min(value) as min_value," +
       " mean(value) as mean_value, stddev(value) as stddev_value, " +
       " count(*) as data_count" +
       " from data" +
-      " group by tenant_id, key, device_id")
+      " group by tenant_id, key")
       .rdd.cache()
       .map(item =>
-        (item(0).toString.toInt, item(1).toString, item(2).toString,
-          item(3).toString.toDouble, item(4).toString.toDouble,
-          item(6).toString.toDouble, item(6).toString.toDouble,
-          item(7).toString.toInt).toString())
+        (item(0).toString.toInt, item(1).toString,
+          item(2).toString.toDouble, item(3).toString.toDouble,
+          item(4).toString.toDouble, item(5).toString.toDouble,
+          item(6).toString.toInt).toString())
       .collect()
       .foreach(item => {
-        producer.send(new ProducerRecord[String, String]("recent", "recent", item))
+        println(item)
+        producer.send(new ProducerRecord[String, String]("recentData", "recentData", item))
       })
     producer.close()
   }
