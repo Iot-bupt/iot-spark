@@ -6,14 +6,15 @@ import edu.bupt.iot.util.kafka.KafkaConfig
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.spark.sql.SparkSession
 
-import scala.collection.mutable
 import scala.util.control.Breaks
 
 object RecentDevice {
   def main(args: Array[String]): Unit = {
     var endTime = new Date().getTime
+    var days = 1
     if(args.length > 0) endTime = args(0).toLong
-    val startTime = endTime - 7 * 3600 * 24 * 1000
+    if(args.length > 1) days = args(1).toInt
+    val startTime = endTime - days * 3600 * 24 * 1000
     println(endTime, startTime)
     val dataFilePre = {
       val start = new StringFormat((if (startTime > 3600000) startTime - 3600000 else 0).toString).formatted("%13s").replaceAll(" ", "0")

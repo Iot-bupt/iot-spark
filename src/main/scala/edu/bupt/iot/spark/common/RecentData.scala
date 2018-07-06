@@ -12,7 +12,7 @@ object RecentData {
   def main(args: Array[String]): Unit = {
     var endTime = new Date().getTime
     if(args.length > 0) endTime = args(0).toLong
-    val startTime = endTime - 7 * 3600 * 24 * 1000
+    val startTime = endTime - 3600 * 24 * 1000
     println(endTime, startTime)
     val dataFilePre = {
       val start = new StringFormat((if (startTime > 3600000) startTime - 3600000 else 0).toString).formatted("%13s").replaceAll(" ", "0")
