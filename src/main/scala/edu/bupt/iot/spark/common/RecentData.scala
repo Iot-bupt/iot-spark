@@ -34,7 +34,7 @@ object RecentData {
     }
     println(dataFilePre)
     val inputFiles = s"hdfs://master:9000/data/device-data-${dataFilePre}*"
-    //val inputFiles = s"hdfs://master:9000/data/1527782400000"
+    //val inputFiles = s"hdfs://master:9000/data/1525428000000"
     println(inputFiles)
     val spark = SparkSession
       .builder()
@@ -52,18 +52,30 @@ object RecentData {
     data.createOrReplaceTempView("data")
     //println(data.show(10))
     val producer = new KafkaProducer[String, String](KafkaConfig.getProducerConf())
-    spark.sql("select tenant_id, key as device_type," +
+    val tmp = spark.sql("select tenant_id, key as device_type," +
       " max(value) as max_value, min(value) as min_value," +
       " mean(value) as mean_value, stddev(value) as stddev_value, " +
       " count(*) as data_count" +
       " from data" +
-      " group by tenant_id, key")
-      .rdd.cache()
+      " group by tenant_id, key").cache()
+    tmp.createOrReplaceTempView("tmp")
+    spark.sql("select tmp.tenant_id as tenant_id, tmp.device_type as device_type," +
+      " concat_ws('', collect_set(tmp.max_value)) as max_value," +
+      " concat_ws('', collect_set(tmp.min_value)) as min_value," +
+      " concat_ws('', collect_set(tmp.mean_value)) as mean_value," +
+      " concat_ws('', collect_set(tmp.stddev_value)) as stddev_value," +
+      " concat_ws('', collect_set(tmp.data_count)) as data_count," +
+      " count(*) as usual_data_count" +
+      " from data, tmp" +
+      " where tmp.tenant_id = data.tenant_id and tmp.device_type = data.key" +
+      " and abs(data.value-tmp.mean_value) < 3*tmp.stddev_value" +
+      " group by tmp.tenant_id, tmp.device_type")
       .map(item =>
         (item(0).toString.toInt, item(1).toString,
           item(2).toString.toDouble, item(3).toString.toDouble,
           item(4).toString.toDouble, item(5).toString.toDouble,
-          item(6).toString.toInt).toString())
+          item(6).toString.toInt, item(7).toString.toInt,
+          item(7).toString.toDouble / item(6).toString.toDouble).toString())
       .collect()
       .foreach(item => {
         println(item)
