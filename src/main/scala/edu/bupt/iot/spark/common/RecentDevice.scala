@@ -3,6 +3,7 @@ package edu.bupt.iot.spark.common
 import java.util.Date
 
 import edu.bupt.iot.util.kafka.KafkaConfig
+import edu.bupt.iot.util.mysql.MysqlConfig
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.spark.sql.SparkSession
 
@@ -51,7 +52,8 @@ object RecentDevice {
         .filter(item => item._5 >= startTime &&  item._5 <= endTime)
       .toDF("tenant_id", "key", "device_id", "value", "time_stamp").cache()
     data.createOrReplaceTempView("data")
-    val producer = new KafkaProducer[String, String](KafkaConfig.getProducerConf())
+    //val producer = new KafkaProducer[String, String](KafkaConfig.getProducerConf())
+    val conn = MysqlConfig.getConnection()
     val tmp = spark.sql("select tenant_id, key as device_type," +
       " count(distinct device_id) as device_count, count(*) as data_count," +
       " mean(value) as mean_value, stddev(value) as stddev_value" +
@@ -70,12 +72,31 @@ object RecentDevice {
         (item(0).toString.toInt, item(1).toString,
           item(2).toString.toInt, item(3).toString.toInt, item(4).toString.toInt,
           item(4).toString.toDouble / item(3).toString.toDouble
-        ).toString())
+        ))//.toString())
       .collect()
       .foreach(item => {
         println(item)
-        producer.send(new ProducerRecord[String, String]("recentDevice", "recentDevice", item))
+        try {
+          val insertStr = "INSERT INTO recent_device" +
+            "(tenant_id, device_type, device_count, " +
+            "data_count, usual_data_count, usual_data_rate, date) " +
+            "VALUES(?, ?, ?, ?, ?, ?, ?)"
+          val prep = conn.prepareStatement(insertStr)
+          prep.setInt(1, item._1)//tenantid
+          prep.setString(2, item._2)//devicetype
+          prep.setInt(3, item._3)//datacount
+          prep.setInt(4, item._4)//datacount
+          prep.setInt(5, item._5)//usualdatacount
+          prep.setDouble(6, if(item._6.isNaN) 0.0 else item._6)//rate
+          prep.setDate(7, new java.sql.Date(endTime))//date
+          prep.executeUpdate
+        } catch{
+          case e:
+            Exception => e.printStackTrace
+        }
+        //producer.send(new ProducerRecord[String, String]("recentDevice", "recentDevice", item))
       })
-    producer.close()
+    //producer.close()
+    conn.close
   }
 }
